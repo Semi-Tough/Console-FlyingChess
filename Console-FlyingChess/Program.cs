@@ -14,6 +14,26 @@ namespace Console_FlyingChess
 
             #endregion
 
+            #region 场景选择
+
+            SceneType currentScene = SceneType.Begin;
+            while (true)
+            {
+                switch (currentScene)
+                {
+                    case SceneType.Begin:
+                        break;
+                    case SceneType.Game:
+                        break;
+                    case SceneType.End:
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+            
+            #endregion
+
         }
 
         private static void InitConsole(int wide,int high)
@@ -21,6 +41,13 @@ namespace Console_FlyingChess
             Console.CursorVisible = false;
             Console.SetWindowSize(wide,high);
             Console.SetBufferSize(wide,high);
+        }
+        
+        private enum SceneType
+        {
+            Begin,
+            Game,
+            End
         }
     }
 }
