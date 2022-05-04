@@ -24,7 +24,7 @@ namespace Console_FlyingChess
                 {
                     case SceneType.Begin:
                         Console.Clear();
-                        BeginScene(wide, ref currentScene);
+                        MenuScene(wide, ref currentScene);
                         break;
                     case SceneType.Game:
                         Console.Clear();
@@ -32,6 +32,7 @@ namespace Console_FlyingChess
                         break;
                     case SceneType.End:
                         Console.Clear();
+                        MenuScene(wide, ref currentScene);
                         break;
                 }
             }
@@ -52,21 +53,23 @@ namespace Console_FlyingChess
 
         #endregion
 
-        #region 开始窗口
+        #region 开始和结束窗口
 
-        private static void BeginScene(int wide, ref SceneType currentScene)
+        private static void MenuScene(int wide, ref SceneType currentScene)
         {
-            Console.SetCursorPosition(wide / 2 - 3, 8);
-            Console.Write("飞行棋");
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.SetCursorPosition(currentScene == SceneType.Begin ? wide / 2 - 3 : wide / 2 - 4, 8);
+            Console.Write(currentScene == SceneType.Begin ? "飞行棋" : "游戏结束");
+
 
             int selectedIndex = 1;
-            bool quitBeginScene = false;
+            bool quitMenuScene = false;
 
             while (true)
             {
                 Console.ForegroundColor = selectedIndex == 1 ? ConsoleColor.Red : ConsoleColor.White;
-                Console.SetCursorPosition(wide / 2 - 4, 13);
-                Console.Write("开始游戏");
+                Console.SetCursorPosition(currentScene == SceneType.Begin ? wide / 2 - 4 : wide / 2 - 5, 13);
+                Console.Write(currentScene == SceneType.Begin ? "开始游戏" : "回到主菜单");
 
                 Console.ForegroundColor = selectedIndex == 0 ? ConsoleColor.Red : ConsoleColor.White;
                 Console.SetCursorPosition(wide / 2 - 4, 15);
@@ -87,7 +90,7 @@ namespace Console_FlyingChess
                         if (selectedIndex == 1)
                         {
                             currentScene = SceneType.Game;
-                            quitBeginScene = true;
+                            quitMenuScene = true;
                         }
                         else
                         {
@@ -97,7 +100,7 @@ namespace Console_FlyingChess
                         break;
                 }
 
-                if (quitBeginScene)
+                if (quitMenuScene)
                 {
                     break;
                 }
@@ -340,7 +343,7 @@ namespace Console_FlyingChess
             bool gameOver = RandomDice(wide, high, ref player1, ref player2, map);
             map.Draw();
             DrawPlayer(player1, player2, map);
-            
+
             if (!gameOver) return false;
             Console.ReadKey(true);
             currentScene = SceneType.End;
