@@ -1,8 +1,9 @@
 ﻿using System;
+using static Console_FlyingChess.PlayerType;
 
 namespace Console_FlyingChess
 {
-    static class Program
+    public static class Program
     {
         public static void Main()
         {
@@ -27,7 +28,7 @@ namespace Console_FlyingChess
                         break;
                     case SceneType.Game:
                         Console.Clear();
-                        GameScene(wide, high);
+                        GameScene(wide, high, ref currentScene);
                         break;
                     case SceneType.End:
                         Console.Clear();
@@ -36,7 +37,7 @@ namespace Console_FlyingChess
             }
 
             #endregion
-            
+
             // ReSharper disable once FunctionNeverReturns
         }
 
@@ -107,15 +108,27 @@ namespace Console_FlyingChess
 
         #region 游戏窗口
 
-        private static void GameScene(int wide, int high)
+        private static void GameScene(int wide, int high, ref SceneType currentScene)
         {
+            // ReSharper disable once TooWideLocalVariableScope
+
+            bool gameOver;
+
             DrawWall(wide, high);
-          
+
             Map map = new Map(14, 3, 83);
             map.Draw();
-            
+
+            Player player = new Player(0, PlayerType.Player);
+            Player computer = new Player(0, Computer);
+            DrawPlayer(player, computer, map);
+
             while (true)
             {
+                gameOver = MoveNext(wide, high, ref player, ref computer, map, ref currentScene);
+                if (gameOver) break;
+                gameOver = MoveNext(wide, high, ref computer, ref player, map, ref currentScene);
+                if (gameOver) break;
             }
             // ReSharper disable once FunctionNeverReturns
         }
@@ -181,12 +194,165 @@ namespace Console_FlyingChess
             Console.Write("按任意键开始扔色子");
         }
 
+        private static void DrawPlayer(Player player, Player computer, Map map)
+        {
+            if (player.IndexMap == computer.IndexMap)
+            {
+                Console.SetCursorPosition(map.Grids[player.IndexMap].Position.X, map.Grids[player.IndexMap].Position.Y);
+                Console.ForegroundColor = ConsoleColor.DarkGreen;
+                Console.Write("◎");
+            }
+            else
+            {
+                player.Draw(map);
+                computer.Draw(map);
+            }
+        }
+
+        private static bool RandomDice(int wide, int high, ref Player player1, ref Player player2, Map map)
+        {
+            ClearInfo(wide, high);
+            Console.ForegroundColor =
+                player1.PlayerType == PlayerType.Player ? ConsoleColor.Cyan : ConsoleColor.Magenta;
+            if (player1.Pause)
+            {
+                Console.SetCursorPosition(2, high - 6);
+                Console.Write("处于暂停状态，{0}需要暂停一回合", player1.PlayerType == PlayerType.Player ? "你" : "电脑");
+                Console.SetCursorPosition(2, high - 5);
+                Console.Write("请按任意键，让{0}开始扔色子", player2.PlayerType == Computer ? "电脑" : "你");
+
+                player1.Pause = false;
+                return false;
+            }
+
+            Random random = new Random();
+            int randomNum = random.Next(1, 7);
+            player1.IndexMap += randomNum;
+            if (player1.IndexMap >= map.Grids.Length - 1)
+            {
+                Console.SetCursorPosition(2, high - 6);
+                Console.Write(player1.PlayerType == PlayerType.Player ? "恭喜你，你率先到达了终点" : "很遗憾，电脑率到达了终点");
+                Console.SetCursorPosition(2, high - 5);
+                Console.Write("请按任意键结束游戏");
+
+                player1.IndexMap = map.Grids.Length - 1;
+                return true;
+            }
+
+            Console.SetCursorPosition(2, high - 6);
+            Console.Write("{0}扔出的点数为:{1}", player1.PlayerType == PlayerType.Player ? "你" : "电脑", randomNum);
+
+            switch (map.Grids[player1.IndexMap].Type)
+            {
+                case GridType.NormalGrid:
+                    Console.SetCursorPosition(2, high - 5);
+                    Console.Write("{0}到了一个安全位置", player1.PlayerType == PlayerType.Player ? "你" : "电脑");
+                    Console.SetCursorPosition(2, high - 4);
+                    Console.Write("请按任意键，让{0}开始扔色子", player1.PlayerType == PlayerType.Player ? "电脑" : "你");
+                    break;
+                case GridType.BoomGrid:
+                    player1.IndexMap -= 5;
+                    if (player1.IndexMap <= 0) player1.IndexMap = 0;
+
+                    Console.SetCursorPosition(2, high - 5);
+                    Console.Write("{0}踩到了炸弹，退后5格", player1.PlayerType == PlayerType.Player ? "你" : "电脑");
+                    Console.SetCursorPosition(2, high - 4);
+                    Console.Write("请按任意键，让{0}开始扔色子", player1.PlayerType == PlayerType.Player ? "电脑" : "你");
+
+                    break;
+                case GridType.PauseGrid:
+                    player1.Pause = true;
+
+                    Console.SetCursorPosition(2, high - 5);
+                    Console.Write("{0}到达了暂停点，你需要暂停一回合", player1.PlayerType == PlayerType.Player ? "你" : "电脑");
+                    Console.SetCursorPosition(2, high - 4);
+                    Console.Write("请按任意键，让{0}开始扔色子", player2.PlayerType == Computer ? "电脑" : "你");
+                    break;
+                case GridType.RandomGrid:
+
+                    Console.SetCursorPosition(2, high - 5);
+                    Console.Write("{0}踩到了时空隧道", player1.PlayerType == PlayerType.Player ? "你" : "电脑");
+
+                    randomNum = random.Next(0, 3);
+                    switch (randomNum)
+                    {
+                        case 0:
+                            player1.IndexMap -= 5;
+
+                            Console.SetCursorPosition(2, high - 4);
+                            Console.Write("触发倒退5格");
+                            break;
+                        case 1:
+                            player1.Pause = true;
+
+                            Console.SetCursorPosition(2, high - 4);
+                            Console.Write("触发暂停一回合");
+                            break;
+                        case 2:
+                            (player1.IndexMap, player2.IndexMap) = (player2.IndexMap, player1.IndexMap);
+
+                            Console.SetCursorPosition(2, high - 4);
+                            Console.Write("惊喜，惊喜，双方交换位置");
+
+                            Console.SetCursorPosition(2, high - 3);
+                            Console.Write("请按任意键，让{0}开始扔色子", player1.PlayerType == PlayerType.Player ? "电脑" : "你");
+
+                            break;
+                    }
+
+                    break;
+            }
+
+            return false;
+        }
+
+        private static void ClearInfo(int wide, int high)
+        {
+            Console.SetCursorPosition(2, high - 6);
+            for (int i = 0; i < wide - 4; i++)
+            {
+                Console.Write(" ");
+            }
+
+            Console.SetCursorPosition(2, high - 5);
+            for (int i = 0; i < wide - 4; i++)
+            {
+                Console.Write(" ");
+            }
+
+            Console.SetCursorPosition(2, high - 4);
+            for (int i = 0; i < wide - 4; i++)
+            {
+                Console.Write(" ");
+            }
+
+            Console.SetCursorPosition(2, high - 3);
+            for (int i = 0; i < wide - 4; i++)
+            {
+                Console.Write(" ");
+            }
+        }
+
+        private static bool MoveNext(int wide, int high, ref Player player1, ref Player player2, Map map,
+            ref SceneType currentScene)
+        {
+            Console.ReadKey(true);
+            bool gameOver = RandomDice(wide, high, ref player1, ref player2, map);
+            map.Draw();
+            DrawPlayer(player1, player2, map);
+            
+            if (!gameOver) return false;
+            Console.ReadKey(true);
+            currentScene = SceneType.End;
+            return true;
+        }
+
         #endregion
     }
 
     #region 场景相关
 
-    internal enum SceneType
+    public enum SceneType
     {
         Begin,
         Game,
@@ -258,40 +424,40 @@ namespace Console_FlyingChess
 
     #region 地图相关
 
-    struct Map
+    public readonly struct Map
     {
-        public Grid[] grids;
+        public readonly Grid[] Grids;
 
         public Map(int startX, int startY, int amount)
         {
-            grids = new Grid[amount];
+            Grids = new Grid[amount];
             Random random = new Random();
 
             int indexX = 0;
             int indexY = 0;
             int stepX = 2;
 
-            for (int i = 0; i < grids.Length; i++)
+            for (int i = 0; i < Grids.Length; i++)
             {
                 int percent = random.Next(0, 101);
-                if (percent < 85 || i == 0 || i == grids.Length - 1)
+                if (percent < 85 || i == 0 || i == Grids.Length - 1)
                 {
-                    grids[i].Type = GridType.NormalGrid;
+                    Grids[i].Type = GridType.NormalGrid;
                 }
                 else if (percent > 85 && percent < 90)
                 {
-                    grids[i].Type = GridType.BoomGrid;
+                    Grids[i].Type = GridType.BoomGrid;
                 }
                 else if (percent > 90 && percent < 95)
                 {
-                    grids[i].Type = GridType.PauseGrid;
+                    Grids[i].Type = GridType.PauseGrid;
                 }
                 else if (percent > 95 && percent < 100)
                 {
-                    grids[i].Type = GridType.RandomGrid;
+                    Grids[i].Type = GridType.RandomGrid;
                 }
 
-                grids[i].Position = new Vector2(startX, startY);
+                Grids[i].Position = new Vector2(startX, startY);
 
                 if (indexX < 10)
                 {
@@ -312,9 +478,49 @@ namespace Console_FlyingChess
 
         public void Draw()
         {
-            foreach (Grid grid in grids)
+            foreach (Grid grid in Grids)
             {
                 grid.Draw();
+            }
+        }
+    }
+
+    #endregion
+
+    #region 玩家相关
+
+    public enum PlayerType
+    {
+        Player,
+        Computer
+    }
+
+    public struct Player
+    {
+        public readonly PlayerType PlayerType;
+        public int IndexMap;
+        public bool Pause;
+
+        public Player(int indexMap, PlayerType playerType)
+        {
+            IndexMap = indexMap;
+            PlayerType = playerType;
+            Pause = false;
+        }
+
+        public void Draw(Map map)
+        {
+            Console.SetCursorPosition(map.Grids[IndexMap].Position.X, map.Grids[IndexMap].Position.Y);
+
+            if (PlayerType == PlayerType.Player)
+            {
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.Write("★");
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Magenta;
+                Console.Write("▲");
             }
         }
     }
